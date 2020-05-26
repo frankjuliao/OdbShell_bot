@@ -5,6 +5,8 @@
 **OdbShell_bot** Connect to device ODB2 car, and collect data, example: speedODB, speedGPS, latitude and longitude, update data to database in create file json.
 Data Update format json to mysql.
 
+OdbShell_bot - Realiza conexão entre o aplicativo Torque e o Sendor ODB2, no qual é realizado a leitura de dados como velocidade do dispositivo ODB, velocidade do GPS, latitude e longitude.
+
 <h2> Requisite:</h2>
 <table>
 <thead>
@@ -25,6 +27,10 @@ Data Update format json to mysql.
 </tr>
 <td>Token id Telegram (<a href="https://core.telegram.org/bots#3-how-do-i-create-a-bot" rel="nofollow">Download</a>)</td>
 <td>Bot required.</td>
+</tr>
+<tr>
+<td>APK Torque (<a href="https://play.google.com/store/apps/details?id=org.prowl.torquefree" rel="nofollow">Download</a>)</td>
+<td>Application where you connect to an ODB2 devices.</td>
 </tr>
 </tbody>
 </table>
