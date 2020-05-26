@@ -1,0 +1,100 @@
+#!/bin/bash
+
+#########################################################################################
+#	NAME: Torque									#
+#	OBJECTIVE: Connect to device ODB2 car, and collect data, example: speedODB	#
+#	speedGPS, latitude and longitude						#
+#	DATE: 20/05/2020								#
+#	VERSION: 1.0									#
+#	AUTHOR: FRANKLINALDO SILVA							#
+#	CONTACT: FRANK.JULIAO@HOTMAIL.COM						#
+#########################################################################################
+
+# SOURCE FILE TO DATABASE AND TELEGRAM CONNECTION
+source connect.conf
+
+# INIT LOOP SCRIPT
+
+while true
+do
+	# WAIT 5 SECONDS AND CREATE SOCKET NETCAT, GET DATA.
+	sleep 2 | netcat -lp 5001 | grep -i "GET /dados.php?" > location.log
+	dados=$(grep -oi "id=.*" location.log  | tail -n1)
+	valid_date=$(echo $dados | egrep -o "time=\w+" | egrep -o "[0-9]\w{9}")
+	if [ "$valid_date" -gt "$NEW_DADOS" ]
+	then
+		NEW_DADOS=$(echo $dados | egrep -o "time=\w+" | egrep -o "[0-9]\w{9}")
+		id=$(echo $dados | egrep -o "id=\w+" | egrep -o "[0-9].+")
+		date=$(date -d "@$(echo $dados | egrep -o "time=\w+" | egrep -o "[0-9]\w{9}")" +%H:%M:%S' '%d/%m/%Y)
+		longitude=$(echo $dados | egrep -o "kff1005[=][-]?\w+\.\w+" | egrep -o "?[-].+")
+		latitude=$(echo $dados | egrep -o "kff1006[=][-]?\w+\.\w+" | egrep -o "?[-].+")
+		speed_gps=$(echo $dados | egrep -o "kff1001[=][-]?\w+\.\w+" | egrep -o "\b[-]?[0-9].+")
+		speed_odb=$(echo $dados | egrep -o "kff1007[=][-]?\w+\.\w+" | egrep -o "\b[-]?[0-9].+")
+
+		# GENERATE FILE JSON
+		json=$(echo "{\"Veículo\": \"$id\", \"Dados\": [{\"Data\": \"$date\", \"Latitude\": \"$latitude\", \"Longitude\": \"$longitude\", \"Speed GPS\": \"$speed_gps\", \"Speed ODB\": \"$speed_odb\" }]}")
+		echo $json > rastreador.json
+
+		# INSERT JSON IN DB MYSQL
+		$CONN "INSERT INTO dados (log) VALUES('$json')";
+
+		#SEND COORDINATED IN REAL TIME TO TELEGRAM // = SET_TIME=180s
+		func_send_msgm() {
+		MESSAGE_ID=$(curl "https://api.telegram.org/bot$TOKEN_TELEGRAM/sendlocation?chat_id=$USER&latitude=$latitude&longitude=$longitude&live_period=180" | jq .result.message_id)
+		echo "$MESSAGE_ID" >> msgm_id.log
+		SEND_MSGM="1"
+		sleep 10
+		}
+		func_atualizar_msgm() {
+		status_location=$(curl "https://api.telegram.org/bot$TOKEN_TELEGRAM/editMessageLiveLocation?chat_id=$USER&latitude=$latitude&longitude=$longitude&message_id=$MESSAGE_ID" | jq -r .description)
+		echo $status_location | grep -i "Bad Request: message can't be edited" &> /dev/null
+		if [ $? = 0 ]; then
+			export SEND_MSGM="0"
+			for i in $(less msgm_id.log); do
+				curl "https://api.telegram.org/bot$TOKEN_TELEGRAM/deleteMessage?chat_id=$USER&message_id=$i"
+				echo "" > msgm_id.log
+			done
+		fi
+		}
+
+	# LOOP GET COMMAND AND SEND MESSAGE
+	msgm_telegram=$(curl -sXGET https://api.telegram.org/bot$TOKEN_TELEGRAM/getUpdates)
+	update_id=$(echo $msgm_telegram | jq '.result[-1].update_id')
+	message_id_update=$(echo $msgm_telegram | jq '.result[-1].message.message_id')
+	echo "$message_id_update" >> msgm_id.log
+
+	if [ -n "$UPDATE" -o "$update_id" != "$UPDATE" ]; then
+
+		if [ -n "$NEW_MSGM_ID_UPDATE" ]; then
+			if [ "$message_id_update" != "$NEW_MSGM_ID_UPDATE" ]; then
+				UPDATE="$update_id"
+				NEW_MSGM_ID_UPDATE="$message_id_update"
+				type=$(echo $msgm_telegram | jq -r '.result[-1].message.entities')
+				if [ "$type" != "null" ]; then
+					command=$(echo $msgm_telegram | jq -r '.result[-1].message.text')
+					case $command in
+					'/localizar') func_send_msgm;;
+#					'/parar') echo "stop locator";;
+					*) echo "command not found";;
+					esac
+				fi
+			fi
+		else
+			NEW_MSGM_ID_UPDATE="$message_id_update"
+		fi
+	else
+		UPDATE="$update_id"
+	fi
+
+
+
+
+
+
+	# CASE CONDITION
+	case $SEND_MSGM in
+		'1') sleep 10; func_atualizar_msgm;;
+#		*) func_enviar_msgm;;
+	esac
+	fi
+done
