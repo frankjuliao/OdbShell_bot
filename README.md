@@ -31,8 +31,16 @@ Data Update format json to mysql.
 
 <h3>How to use: </h3>
 * Create database in mysql or import
+CREATE TABLE odb_shell
+(
+ id INT AUTO_INCREMENT PRIMARY KEY
+ , dados JSON
+) ENGINE = InnoDB;
+
 * Change data in the connect.conf file
+
 * Set script permission to execution # chmod +x
+
 * Run OdbShell_bot
 example: ./OdbShell_bot OR bash OdbShell_bot
 
