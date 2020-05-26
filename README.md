@@ -22,7 +22,7 @@ OdbShell_bot - Realiza conexão entre o aplicativo Torque e o Sendor ODB2, no qu
 <td>JSON command processor</td>
 </tr>
 <tr>
-<td>curl</td>
+<td>Curl</td>
 <td>Command line tool to transfer data using various protocols.</td>
 </tr>
 <td>Token id Telegram (<a href="https://core.telegram.org/bots#3-how-do-i-create-a-bot" rel="nofollow">Download</a>)</td>
